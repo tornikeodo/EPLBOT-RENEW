@@ -270,7 +270,7 @@ client.on('interactionCreate', async interaction => {
           .setStyle(ButtonStyle.Danger)
       );
 
-    const channel = client.channels.cache.get('SPECIFIC_CHANNEL_ID'); // Replace with actual channel ID
+    const channel = client.channels.cache.get('1263223403637243994'); // Replace with actual channel ID
     if (channel) {
       const message = await channel.send({ embeds: [embed], components: [row] });
       await interaction.reply({ content: 'Recommendation sent!', ephemeral: true });
