@@ -2,7 +2,7 @@
   "name": "👑 BOT GHOST STATUS REMOVER RTX \n",
   "version": "Latest Version : ",
   "description": "There will be more updates For this BOT",
-  "main": "index.js",
+  "main": "bot.js",
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
     "@discordjs/voice": "^0.16.0",
@@ -203,7 +203,7 @@
     "ytsr": "^3.8.2"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
