@@ -1,0 +1,16 @@
+{
+  "name": "vrsbot",
+  "version": "1.0.0",
+  "description": "Your bot description",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "dotenv": "^8.0.0",
+    "express": "^4.19.2",
+    "noblox.js": "^4.15.1",
+    "sqlite3": "^5.1.7"
+  }
+}
