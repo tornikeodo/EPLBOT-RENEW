@@ -67,7 +67,12 @@ const commands = [
   new SlashCommandBuilder().setName('friendly')
     .setDescription('Post a friendly request.')
     .addStringOption(option => option.setName('team_name').setDescription('The team name').setRequired(true))
-    .addStringOption(option => option.setName('information').setDescription('Information about the request').setRequired(true))
+    .addStringOption(option => option.setName('information').setDescription('Information about the request').setRequired(true)),
+  new SlashCommandBuilder().setName('recommend')
+    .setDescription('Recommend a user to join the group.')
+    .addUserOption(option => option.setName('user').setDescription('The user to recommend').setRequired(true))
+    .addStringOption(option => option.setName('robloxuser').setDescription('The Roblox username').setRequired(true))
+    .addStringOption(option => option.setName('reason').setDescription('The reason for recommendation').setRequired(true))
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);
@@ -108,7 +113,7 @@ client.on('interactionCreate', async interaction => {
       },
     };
 
-    const channel = client.channels.cache.get('');
+    const channel = client.channels.cache.get('YOUR_CHANNEL_ID');
     if (channel) {
       await channel.send({ embeds: [embed] });
       await interaction.reply({ content: 'Application submitted!', ephemeral: true });
@@ -129,7 +134,7 @@ client.on('interactionCreate', async interaction => {
       },
     };
 
-    const channel = client.channels.cache.get('');
+    const channel = client.channels.cache.get('YOUR_CHANNEL_ID');
     if (channel) {
       await channel.send({ embeds: [embed] });
       await interaction.reply({ content: 'Sign message sent!', ephemeral: true });
@@ -215,9 +220,8 @@ client.on('interactionCreate', async interaction => {
     }
 
     const embed = {
-      color: 0x0000ff, // Blue color
-      title: 'Looking for a Friendly!',
-      description: `${interaction.user} is looking for a friendly`,
+      color: 0xff0000,
+      title: 'Friendly Request',
       fields: [
         { name: 'Team Name', value: teamName },
         { name: 'Information', value: information },
@@ -228,16 +232,78 @@ client.on('interactionCreate', async interaction => {
       },
     };
 
-    const channel = client.channels.cache.get('');
+    const channel = client.channels.cache.get('YOUR_CHANNEL_ID');
     if (channel) {
       await channel.send({ embeds: [embed] });
-      await channel.send('<@&1260910227184943238> ^^^^^');
-      await interaction.reply({ content: 'Friendly request submitted!', ephemeral: true });
-
+      await interaction.reply({ content: 'Friendly request sent!', ephemeral: true });
       usedFriendlyCommand.add(interaction.user.id);
       setTimeout(() => {
         usedFriendlyCommand.delete(interaction.user.id);
-      }, 3600000); // 1 hour in milliseconds
+      }, 3600000); // 1 hour cooldown
+    } else {
+      await interaction.reply({ content: 'Failed to find the specified channel.', ephemeral: true });
+    }
+  } else if (commandName === 'recommend') {
+    const user = interaction.options.getUser('user');
+    const robloxuser = interaction.options.getString('robloxuser');
+    const reason = interaction.options.getString('reason');
+
+    const embed = {
+      color: 0x00ff00,
+      title: 'Recommendation',
+      description: `**Recommended User:** ${user}\n**Roblox Username:** ${robloxuser}\n**Reason:** ${reason}`,
+      timestamp: new Date(),
+      footer: {
+        text: 'Recommendation',
+      },
+    };
+
+    const row = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('accept')
+          .setLabel('✅')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('reject')
+          .setLabel('❌')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+    const channel = client.channels.cache.get('SPECIFIC_CHANNEL_ID'); // Replace with actual channel ID
+    if (channel) {
+      const message = await channel.send({ embeds: [embed], components: [row] });
+      await interaction.reply({ content: 'Recommendation sent!', ephemeral: true });
+
+      const filter = i => i.customId === 'accept' || i.customId === 'reject';
+      const collector = message.createMessageComponentCollector({ filter, time: 60000 });
+
+      collector.on('collect', async i => {
+        if (i.customId === 'accept') {
+          try {
+            const users = await noblox.getJoinRequests(groupId);
+            const userRequest = users.data.find(user => user.requester.username === robloxuser);
+            if (userRequest) {
+              await noblox.handleJoinRequest(groupId, userRequest.requester.userId, true);
+              await i.deferUpdate();
+              await user.send(`You have been recommended to the server by ${interaction.user.username}!`);
+              await i.update({ content: 'Recommendation accepted and group request approved.', ephemeral: true });
+            } else {
+              await i.update({ content: 'User not found in join requests.', ephemeral: true });
+            }
+          } catch (error) {
+            console.error(error);
+            await i.update({ content: 'An error occurred while accepting the recommendation.', ephemeral: true });
+          }
+        } else if (i.customId === 'reject') {
+          await i.deferUpdate();
+          await i.update({ content: 'Recommendation rejected.', ephemeral: true });
+        }
+      });
+
+      collector.on('end', collected => {
+        console.log(`Collected ${collected.size} interactions.`);
+      });
     } else {
       await interaction.reply({ content: 'Failed to find the specified channel.', ephemeral: true });
     }
@@ -246,22 +312,21 @@ client.on('interactionCreate', async interaction => {
 
 client.login(token);
 
-// Function to update status and send messages
-async function updateStatusAndSendMessages() {
-  if (currentIndex >= statusMessages.length) {
-    currentIndex = 0;
-  }
+function updateStatusAndSendMessages() {
+  const guild = client.guilds.cache.get(guildId);
+  if (guild) {
+    const memberCount = guild.memberCount;
+    client.user.setActivity(`${memberCount} Players | Over EPL`, { type: ActivityType.Watching });
 
-  const status = statusMessages[currentIndex];
-  await client.user.setActivity(status, { type: ActivityType.Watching });
-  console.log(`🤖 Bot status updated: ${status}`);
-  currentIndex++;
-  const channel = client.channels.cache.get('YOUR_CHANNEL_ID');
-  if (channel && channel instanceof TextChannel) {
-    const messagePath = path.join(__dirname, 'messages', `${currentIndex}.txt`);
-    if (fs.existsSync(messagePath)) {
-      const message = fs.readFileSync(messagePath, 'utf-8');
-      await channel.send(message);
+    if (currentIndex < statusMessages.length) {
+      const statusMessage = statusMessages[currentIndex];
+      const channel = client.channels.cache.get('YOUR_CHANNEL_ID');
+      if (channel) {
+        channel.send(statusMessage);
+      }
+      currentIndex++;
+    } else {
+      currentIndex = 0;
     }
   }
 }
